@@ -78,7 +78,7 @@ public class CapacityVRP {
       totalDistance += routeDistance;
       totalLoad += routeLoad;
     }
-    Presenter.println(Message.totalTimeOfRoutes + totalDistance + "m");
+    Presenter.println(Message.totalDistanceOfRoutes + totalDistance + "m");
     Presenter.println(Message.totalLoadOfRoutes + totalLoad);
   }
 
