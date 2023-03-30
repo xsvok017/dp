@@ -4,12 +4,6 @@
 
 package svok.dp;
 
-import svok.dp.Kuk;
-import svok.dp.BasicExample;
-import svok.dp.Vrp;
-import svok.dp.CapacityVRP;
-import svok.dp.PckupDeliveryVRP;
-
 /**
  *
  * @author Petr
@@ -17,15 +11,16 @@ import svok.dp.PckupDeliveryVRP;
 public class Dp {
 
     public static void main(String[] args) {
-        System.out.println("=== run "+Kuk.class.getName()+" ===");
-        Kuk kuk=new Kuk();
-        kuk.kukám();
 
-        System.out.println("=== run "+BasicExample.class.getName()+" ===");
-        BasicExample basic = new BasicExample();
-        basic.run();
+//        Dp.printRunInfo(Kuk.class.getName());
+//        Kuk kuk=new Kuk();
+//        kuk.kukám();
+//
+//        Dp.printRunInfo(BasicExample.class.getName());
+//        BasicExample basic = new BasicExample();
+//        basic.run();
 
-        System.out.println("=== run "+Vrp.class.getName()+" ===");
+        Dp.printRunInfo(Vrp.class.getName());
         Vrp vrp = new Vrp();
         try {
             vrp.run();
@@ -34,7 +29,7 @@ public class Dp {
             System.out.println(e.getMessage());
         }
 
-        System.out.println("=== run "+CapacityVRP.class.getName()+" ===");
+        Dp.printRunInfo(CapacityVRP.class.getName());
         CapacityVRP capacityVrp = new CapacityVRP();
         try {
             capacityVrp.run();
@@ -43,13 +38,45 @@ public class Dp {
             System.out.println(e.getMessage());
         }
 
-        System.out.println("=== run "+PckupDeliveryVRP.class.getName()+" ===");
-        PckupDeliveryVRP PickupDeliveryVrp = new PckupDeliveryVRP();
+        Dp.printRunInfo(PickupDeliveryVRP.class.getName());
+        PickupDeliveryVRP PickupDeliveryVrp = new PickupDeliveryVRP();
         try {
             PickupDeliveryVrp.run();
         }
         catch(Exception e) {
             System.out.println(e.getMessage());
         }        
+
+        Dp.printRunInfo(TimeWindowVRP.class.getName());
+        TimeWindowVRP timeWindowVRP = new TimeWindowVRP();
+        try {
+            timeWindowVRP.run();
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }                     
+
+        Dp.printRunInfo(ResourcesVRP.class.getName());
+        ResourcesVRP resourcesVRP = new ResourcesVRP();
+        try {
+            resourcesVRP.run();
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }     
+        
+        Dp.printRunInfo(DropNodeVRP.class.getName());
+        DropNodeVRP dropNodeVRP = new DropNodeVRP();
+        try {
+            dropNodeVRP.run();
+        }
+        catch(Exception e) {
+            System.out.println(e.getMessage());
+        }     
+    }
+    
+    private static void printRunInfo(String classname) {
+        String eol = System.getProperty("line.separator");
+        System.out.println(eol + "=== run "+classname+" ===");
     }
 }

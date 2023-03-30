@@ -21,7 +21,6 @@ import java.util.logging.Logger;
  * @author svok
  */
 public class CapacityVRP {
-  private static final Logger logger = Logger.getLogger(CapacityVRP.class.getName());
 
   static class DataModel {
     public final long[][] distanceMatrix = {
@@ -55,32 +54,32 @@ public class CapacityVRP {
   static void printSolution(
       DataModel data, RoutingModel routing, RoutingIndexManager manager, Assignment solution) {
     // Solution cost.
-    logger.info("Objective: " + solution.objectiveValue());
+    Presenter.println(Message.objective + solution.objectiveValue());
     // Inspect solution.
     long totalDistance = 0;
     long totalLoad = 0;
     for (int i = 0; i < data.vehicleNumber; ++i) {
       long index = routing.start(i);
-      logger.info("Route for Vehicle " + i + ":");
+      Presenter.println(Message.routeForVehicle + i + ":");
       long routeDistance = 0;
       long routeLoad = 0;
       String route = "";
       while (!routing.isEnd(index)) {
         long nodeIndex = manager.indexToNode(index);
         routeLoad += data.demands[(int) nodeIndex];
-        route += nodeIndex + " Load(" + routeLoad + ") -> ";
+        route += nodeIndex + " " + Message.load + "(" + routeLoad + ") -> ";
         long previousIndex = index;
         index = solution.value(routing.nextVar(index));
         routeDistance += routing.getArcCostForVehicle(previousIndex, index, i);
       }
       route += manager.indexToNode(routing.end(i));
-      logger.info(route);
-      logger.info("Distance of the route: " + routeDistance + "m");
+      Presenter.println(route);
+      Presenter.println(Message.distanceOfRoute + routeDistance + "m");
       totalDistance += routeDistance;
       totalLoad += routeLoad;
     }
-    logger.info("Total distance of all routes: " + totalDistance + "m");
-    logger.info("Total load of all routes: " + totalLoad);
+    Presenter.println(Message.totalTimeOfRoutes + totalDistance + "m");
+    Presenter.println(Message.totalLoadOfRoutes + totalLoad);
   }
 
   public void run() throws Exception {

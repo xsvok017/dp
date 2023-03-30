@@ -3,22 +3,6 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package svok.dp;
-
-// Copyright 2010-2022 Google LLC
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-// [START program]
-//package com.google.ortools.constraintsolver.samples;
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
@@ -26,11 +10,15 @@ import com.google.ortools.constraintsolver.RoutingDimension;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
+import com.google.ortools.constraintsolver.Solver;
 import com.google.ortools.constraintsolver.main;
 import java.util.logging.Logger;
 
-/** Minimal VRP.*/
-public class Vrp{  // VrpGlobalSpan {
+/**
+ *
+ * @author Petr
+ */
+public class PickupDeliveryVRP {
 
   static class DataModel {
     public final long[][] distanceMatrix = {
@@ -52,6 +40,16 @@ public class Vrp{  // VrpGlobalSpan {
         {776, 868, 1552, 560, 674, 1050, 1278, 742, 1084, 810, 1152, 274, 388, 422, 764, 0, 798},
         {662, 1210, 754, 1358, 1244, 708, 480, 856, 514, 468, 354, 844, 730, 536, 194, 798, 0},
     };
+    public final int[][] pickupsDeliveries = {
+        {1, 6},
+        {2, 10},
+        {4, 3},
+        {5, 9},
+        {7, 8},
+        {15, 11},
+        {13, 12},
+        {16, 14},
+    };
     public final int vehicleNumber = 4;
     public final int depot = 0;
   }
@@ -62,7 +60,7 @@ public class Vrp{  // VrpGlobalSpan {
     // Solution cost.
     Presenter.println(Message.objective + solution.objectiveValue());
     // Inspect solution.
-    long maxRouteDistance = 0;
+    long totalDistance = 0;
     for (int i = 0; i < data.vehicleNumber; ++i) {
       long index = routing.start(i);
       Presenter.println(Message.routeForVehicle + i + ":");
@@ -76,9 +74,9 @@ public class Vrp{  // VrpGlobalSpan {
       }
       Presenter.println(route + manager.indexToNode(index));
       Presenter.println(Message.distanceOfRoute + routeDistance + "m");
-      maxRouteDistance = Math.max(routeDistance, maxRouteDistance);
+      totalDistance += routeDistance;
     }
-    Presenter.println(Message.maxRouteDistance + maxRouteDistance + "m");
+    Presenter.println(Message.totalDistanceOfRoutes + totalDistance + "m");
   }
 
   public void run() throws Exception {
@@ -106,17 +104,31 @@ public class Vrp{  // VrpGlobalSpan {
     routing.setArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
 
     // Add Distance constraint.
-    routing.addDimension(transitCallbackIndex, 0, 3000,
+    routing.addDimension(transitCallbackIndex, // transit callback index
+        0, // no slack
+        3000, // vehicle maximum travel distance
         true, // start cumul to zero
         "Distance");
     RoutingDimension distanceDimension = routing.getMutableDimension("Distance");
     distanceDimension.setGlobalSpanCostCoefficient(100);
 
+    // Define Transportation Requests.
+    Solver solver = routing.solver();
+    for (int[] request : data.pickupsDeliveries) {
+      long pickupIndex = manager.nodeToIndex(request[0]);
+      long deliveryIndex = manager.nodeToIndex(request[1]);
+      routing.addPickupAndDelivery(pickupIndex, deliveryIndex);
+      solver.addConstraint(
+          solver.makeEquality(routing.vehicleVar(pickupIndex), routing.vehicleVar(deliveryIndex)));
+      solver.addConstraint(solver.makeLessOrEqual(
+          distanceDimension.cumulVar(pickupIndex), distanceDimension.cumulVar(deliveryIndex)));
+    }
+
     // Setting first solution heuristic.
     RoutingSearchParameters searchParameters =
         main.defaultRoutingSearchParameters()
             .toBuilder()
-            .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
+            .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PARALLEL_CHEAPEST_INSERTION)
             .build();
 
     // Solve the problem.
@@ -126,4 +138,3 @@ public class Vrp{  // VrpGlobalSpan {
     printSolution(data, routing, manager, solution);
   }
 }
-// [END program]
