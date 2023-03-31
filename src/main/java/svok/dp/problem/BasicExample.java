@@ -13,7 +13,7 @@
 
 // Minimal example to call the GLOP solver.
 // [START program]
-package svok.dp.example;
+package svok.dp.problem;
 // [START import]
 import com.google.ortools.Loader;
 import com.google.ortools.linearsolver.MPConstraint;

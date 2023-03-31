@@ -2,27 +2,36 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package svok.dp.example;
+package svok.dp.problem;
+
+// Copyright 2010-2022 Google LLC
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// [START program]
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
-import com.google.ortools.constraintsolver.LocalSearchMetaheuristic;
+import com.google.ortools.constraintsolver.RoutingDimension;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
 import com.google.ortools.constraintsolver.main;
-import com.google.protobuf.Duration;
 import java.util.logging.Logger;
 import svok.dp.Message;
 import svok.dp.Presenter;
 
-/** Minimal VRP. */
-
-/**
- *
- * @author svok
- */
-public class CapacityVRP {
+/** Minimal VRP.*/
+public class Vrp{  // VrpGlobalSpan {
 
   static class DataModel {
     public final long[][] distanceMatrix = {
@@ -44,13 +53,9 @@ public class CapacityVRP {
         {776, 868, 1552, 560, 674, 1050, 1278, 742, 1084, 810, 1152, 274, 388, 422, 764, 0, 798},
         {662, 1210, 754, 1358, 1244, 708, 480, 856, 514, 468, 354, 844, 730, 536, 194, 798, 0},
     };
-    public final long[] demands = {0, 1, 1, 2, 4, 2, 4, 8, 8, 1, 2, 1, 2, 4, 4, 8, 8};
-    public final long[] vehicleCapacities = {15, 15, 15, 15};
     public final int vehicleNumber = 4;
     public final int depot = 0;
   }
-  
-  public CapacityVRP() {}
 
   /// @brief Print the solution.
   static void printSolution(
@@ -58,30 +63,23 @@ public class CapacityVRP {
     // Solution cost.
     Presenter.println(Message.objective + solution.objectiveValue());
     // Inspect solution.
-    long totalDistance = 0;
-    long totalLoad = 0;
+    long maxRouteDistance = 0;
     for (int i = 0; i < data.vehicleNumber; ++i) {
       long index = routing.start(i);
       Presenter.println(Message.routeForVehicle + i + ":");
       long routeDistance = 0;
-      long routeLoad = 0;
       String route = "";
       while (!routing.isEnd(index)) {
-        long nodeIndex = manager.indexToNode(index);
-        routeLoad += data.demands[(int) nodeIndex];
-        route += nodeIndex + " " + Message.load + "(" + routeLoad + ") -> ";
+        route += manager.indexToNode(index) + " -> ";
         long previousIndex = index;
         index = solution.value(routing.nextVar(index));
         routeDistance += routing.getArcCostForVehicle(previousIndex, index, i);
       }
-      route += manager.indexToNode(routing.end(i));
-      Presenter.println(route);
+      Presenter.println(route + manager.indexToNode(index));
       Presenter.println(Message.distanceOfRoute + routeDistance + "m");
-      totalDistance += routeDistance;
-      totalLoad += routeLoad;
+      maxRouteDistance = Math.max(routeDistance, maxRouteDistance);
     }
-    Presenter.println(Message.totalDistanceOfRoutes + totalDistance + "m");
-    Presenter.println(Message.totalLoadOfRoutes + totalLoad);
+    Presenter.println(Message.maxRouteDistance + maxRouteDistance + "m");
   }
 
   public void run() throws Exception {
@@ -108,24 +106,18 @@ public class CapacityVRP {
     // Define cost of each arc.
     routing.setArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
 
-    // Add Capacity constraint.
-    final int demandCallbackIndex = routing.registerUnaryTransitCallback((long fromIndex) -> {
-      // Convert from routing variable Index to user NodeIndex.
-      int fromNode = manager.indexToNode(fromIndex);
-      return data.demands[fromNode];
-    });
-    routing.addDimensionWithVehicleCapacity(demandCallbackIndex, 0, // null capacity slack
-        data.vehicleCapacities, // vehicle maximum capacities
+    // Add Distance constraint.
+    routing.addDimension(transitCallbackIndex, 0, 3000,
         true, // start cumul to zero
-        "Capacity");
+        "Distance");
+    RoutingDimension distanceDimension = routing.getMutableDimension("Distance");
+    distanceDimension.setGlobalSpanCostCoefficient(100);
 
     // Setting first solution heuristic.
     RoutingSearchParameters searchParameters =
         main.defaultRoutingSearchParameters()
             .toBuilder()
             .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
-            .setLocalSearchMetaheuristic(LocalSearchMetaheuristic.Value.GUIDED_LOCAL_SEARCH)
-            .setTimeLimit(Duration.newBuilder().setSeconds(1).build())
             .build();
 
     // Solve the problem.
@@ -135,3 +127,4 @@ public class CapacityVRP {
     printSolution(data, routing, manager, solution);
   }
 }
+// [END program]
