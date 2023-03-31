@@ -62,7 +62,7 @@ public class DropNodeVRP {
         droppedNodes += " " + manager.indexToNode(node);
       }
     }
-    Presenter.println(Message.droppedNodes);
+    Presenter.println(droppedNodes);
     // Display routes
     long totalDistance = 0;
     long totalLoad = 0;
