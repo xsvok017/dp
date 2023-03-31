@@ -19,14 +19,6 @@ public class Dp {
 
     public static void main(String[] args) {
 
-//        Dp.printRunInfo(Kuk.class.getName());
-//        Kuk kuk=new Kuk();
-//        kuk.kukám();
-//
-//        Dp.printRunInfo(BasicExample.class.getName());
-//        BasicExample basic = new BasicExample();
-//        basic.run();
-
         Dp.printRunInfo(Vrp.class.getName());
         Vrp vrp = new Vrp();
         try {
