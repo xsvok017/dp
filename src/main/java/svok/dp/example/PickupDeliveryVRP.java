@@ -2,23 +2,25 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package svok.dp;
-
+package svok.dp.example;
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
-import com.google.ortools.constraintsolver.LocalSearchMetaheuristic;
+import com.google.ortools.constraintsolver.RoutingDimension;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
+import com.google.ortools.constraintsolver.Solver;
 import com.google.ortools.constraintsolver.main;
-import com.google.protobuf.Duration;
+import java.util.logging.Logger;
+import svok.dp.Message;
+import svok.dp.Presenter;
 
 /**
  *
- * @author svok
+ * @author Petr
  */
-public class DropNodeVRP {
+public class PickupDeliveryVRP {
 
   static class DataModel {
     public final long[][] distanceMatrix = {
@@ -40,8 +42,16 @@ public class DropNodeVRP {
         {776, 868, 1552, 560, 674, 1050, 1278, 742, 1084, 810, 1152, 274, 388, 422, 764, 0, 798},
         {662, 1210, 754, 1358, 1244, 708, 480, 856, 514, 468, 354, 844, 730, 536, 194, 798, 0},
     };
-    public final long[] demands = {0, 1, 1, 3, 6, 3, 6, 8, 8, 1, 2, 1, 2, 6, 6, 8, 8};
-    public final long[] vehicleCapacities = {15, 15, 15, 15};
+    public final int[][] pickupsDeliveries = {
+        {1, 6},
+        {2, 10},
+        {4, 3},
+        {5, 9},
+        {7, 8},
+        {15, 11},
+        {13, 12},
+        {16, 14},
+    };
     public final int vehicleNumber = 4;
     public final int depot = 0;
   }
@@ -52,42 +62,23 @@ public class DropNodeVRP {
     // Solution cost.
     Presenter.println(Message.objective + solution.objectiveValue());
     // Inspect solution.
-    // Display dropped nodes.
-    String droppedNodes = Message.droppedNodes;
-    for (int node = 0; node < routing.size(); ++node) {
-      if (routing.isStart(node) || routing.isEnd(node)) {
-        continue;
-      }
-      if (solution.value(routing.nextVar(node)) == node) {
-        droppedNodes += " " + manager.indexToNode(node);
-      }
-    }
-    Presenter.println(droppedNodes);
-    // Display routes
     long totalDistance = 0;
-    long totalLoad = 0;
     for (int i = 0; i < data.vehicleNumber; ++i) {
       long index = routing.start(i);
       Presenter.println(Message.routeForVehicle + i + ":");
       long routeDistance = 0;
-      long routeLoad = 0;
       String route = "";
       while (!routing.isEnd(index)) {
-        long nodeIndex = manager.indexToNode(index);
-        routeLoad += data.demands[(int) nodeIndex];
-        route += nodeIndex + " "+ Message.load + "(" + routeLoad + ") -> ";
+        route += manager.indexToNode(index) + " -> ";
         long previousIndex = index;
         index = solution.value(routing.nextVar(index));
         routeDistance += routing.getArcCostForVehicle(previousIndex, index, i);
       }
-      route += manager.indexToNode(routing.end(i));
-      Presenter.println(route);
+      Presenter.println(route + manager.indexToNode(index));
       Presenter.println(Message.distanceOfRoute + routeDistance + "m");
       totalDistance += routeDistance;
-      totalLoad += routeLoad;
     }
     Presenter.println(Message.totalDistanceOfRoutes + totalDistance + "m");
-    Presenter.println(Message.totalLoadOfRoutes + totalLoad);
   }
 
   public void run() throws Exception {
@@ -114,29 +105,32 @@ public class DropNodeVRP {
     // Define cost of each arc.
     routing.setArcCostEvaluatorOfAllVehicles(transitCallbackIndex);
 
-    // Add Capacity constraint.
-    final int demandCallbackIndex = routing.registerUnaryTransitCallback((long fromIndex) -> {
-      // Convert from routing variable Index to user NodeIndex.
-      int fromNode = manager.indexToNode(fromIndex);
-      return data.demands[fromNode];
-    });
-    routing.addDimensionWithVehicleCapacity(demandCallbackIndex, 0, // null capacity slack
-        data.vehicleCapacities, // vehicle maximum capacities
+    // Add Distance constraint.
+    routing.addDimension(transitCallbackIndex, // transit callback index
+        0, // no slack
+        3000, // vehicle maximum travel distance
         true, // start cumul to zero
-        "Capacity");
-    // Allow to drop nodes.
-    long penalty = 1000;
-    for (int i = 1; i < data.distanceMatrix.length; ++i) {
-      routing.addDisjunction(new long[] {manager.nodeToIndex(i)}, penalty);
+        "Distance");
+    RoutingDimension distanceDimension = routing.getMutableDimension("Distance");
+    distanceDimension.setGlobalSpanCostCoefficient(100);
+
+    // Define Transportation Requests.
+    Solver solver = routing.solver();
+    for (int[] request : data.pickupsDeliveries) {
+      long pickupIndex = manager.nodeToIndex(request[0]);
+      long deliveryIndex = manager.nodeToIndex(request[1]);
+      routing.addPickupAndDelivery(pickupIndex, deliveryIndex);
+      solver.addConstraint(
+          solver.makeEquality(routing.vehicleVar(pickupIndex), routing.vehicleVar(deliveryIndex)));
+      solver.addConstraint(solver.makeLessOrEqual(
+          distanceDimension.cumulVar(pickupIndex), distanceDimension.cumulVar(deliveryIndex)));
     }
 
     // Setting first solution heuristic.
     RoutingSearchParameters searchParameters =
         main.defaultRoutingSearchParameters()
             .toBuilder()
-            .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PATH_CHEAPEST_ARC)
-            .setLocalSearchMetaheuristic(LocalSearchMetaheuristic.Value.GUIDED_LOCAL_SEARCH)
-            .setTimeLimit(Duration.newBuilder().setSeconds(1).build())
+            .setFirstSolutionStrategy(FirstSolutionStrategy.Value.PARALLEL_CHEAPEST_INSERTION)
             .build();
 
     // Solve the problem.

@@ -2,23 +2,28 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
-package svok.dp;
+package svok.dp.example;
 
 import com.google.ortools.Loader;
 import com.google.ortools.constraintsolver.Assignment;
 import com.google.ortools.constraintsolver.FirstSolutionStrategy;
 import com.google.ortools.constraintsolver.IntVar;
+import com.google.ortools.constraintsolver.IntervalVar;
 import com.google.ortools.constraintsolver.RoutingDimension;
 import com.google.ortools.constraintsolver.RoutingIndexManager;
 import com.google.ortools.constraintsolver.RoutingModel;
 import com.google.ortools.constraintsolver.RoutingSearchParameters;
+import com.google.ortools.constraintsolver.Solver;
 import com.google.ortools.constraintsolver.main;
-import java.util.logging.Logger;
+import java.util.Arrays;
+import svok.dp.Message;
+import svok.dp.Presenter;
+
 /**
  *
  * @author svok
  */
-public class TimeWindowVRP {
+public class ResourcesVRP {
 
   static class DataModel {
     public final long[][] timeMatrix = {
@@ -44,22 +49,25 @@ public class TimeWindowVRP {
         {0, 5}, // depot
         {7, 12}, // 1
         {10, 15}, // 2
-        {16, 18}, // 3
-        {10, 13}, // 4
+        {5, 14}, // 3
+        {5, 13}, // 4
         {0, 5}, // 5
         {5, 10}, // 6
-        {0, 4}, // 7
+        {0, 10}, // 7
         {5, 10}, // 8
-        {0, 3}, // 9
+        {0, 5}, // 9
         {10, 16}, // 10
         {10, 15}, // 11
         {0, 5}, // 12
         {5, 10}, // 13
-        {7, 8}, // 14
+        {7, 12}, // 14
         {10, 15}, // 15
-        {11, 15}, // 16
+        {5, 15}, // 16
     };
     public final int vehicleNumber = 4;
+    public final int vehicleLoadTime = 5;
+    public final int vehicleUnloadTime = 5;
+    public final int depotCapacity = 2;
     public final int depot = 0;
   }
 
@@ -133,6 +141,22 @@ public class TimeWindowVRP {
       timeDimension.cumulVar(index).setRange(data.timeWindows[0][0], data.timeWindows[0][1]);
     }
 
+    // Add resource constraints at the depot.
+    Solver solver = routing.solver();
+    IntervalVar[] intervals = new IntervalVar[data.vehicleNumber * 2];
+    for (int i = 0; i < data.vehicleNumber; ++i) {
+      // Add load duration at start of routes
+      intervals[2 * i] = solver.makeFixedDurationIntervalVar(
+          timeDimension.cumulVar(routing.start(i)), data.vehicleLoadTime, "depot_interval");
+      // Add unload duration at end of routes.
+      intervals[2 * i + 1] = solver.makeFixedDurationIntervalVar(
+          timeDimension.cumulVar(routing.end(i)), data.vehicleUnloadTime, "depot_interval");
+    }
+
+    long[] depotUsage = new long[intervals.length];
+    Arrays.fill(depotUsage, 1);
+    solver.addConstraint(solver.makeCumulative(intervals, depotUsage, data.depotCapacity, "depot"));
+
     // Instantiate route start and end times to produce feasible times.
     for (int i = 0; i < data.vehicleNumber; ++i) {
       routing.addVariableMinimizedByFinalizer(timeDimension.cumulVar(routing.start(i)));
@@ -153,4 +177,3 @@ public class TimeWindowVRP {
     printSolution(data, routing, manager, solution);
   }
 }
-// [END_program_part1]

@@ -4,6 +4,13 @@
 
 package svok.dp;
 
+import svok.dp.example.TimeWindowVRP;
+import svok.dp.example.ResourcesVRP;
+import svok.dp.example.PickupDeliveryVRP;
+import svok.dp.example.DropNodeVRP;
+import svok.dp.example.CapacityVRP;
+import svok.dp.example.Vrp;
+
 /**
  *
  * @author Petr
